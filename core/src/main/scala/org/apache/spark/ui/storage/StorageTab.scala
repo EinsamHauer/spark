@@ -57,6 +57,13 @@ class StorageListener(storageStatusListener: StorageStatusListener) extends Bloc
     StorageUtils.updateRddInfo(rddInfosToUpdate, activeStorageStatusList)
   }
 
+  override def onTaskEnd(taskEnd: SparkListenerTaskEnd): Unit = synchronized {
+    val metrics = taskEnd.taskMetrics
+    if (metrics != null && metrics.updatedBlockStatuses.nonEmpty) {
+      updateRDDInfo(metrics.updatedBlockStatuses)
+    }
+  }
+
   override def onStageSubmitted(stageSubmitted: SparkListenerStageSubmitted): Unit = synchronized {
     val rddInfos = stageSubmitted.stageInfo.rddInfos
     rddInfos.foreach { info => _rddInfoMap.getOrElseUpdate(info.id, info).name = info.name }
