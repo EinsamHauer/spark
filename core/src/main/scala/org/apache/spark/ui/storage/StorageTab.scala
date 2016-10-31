@@ -50,6 +50,13 @@ class StorageListener(storageStatusListener: StorageStatusListener) extends Bloc
     _rddInfoMap.values.filter(_.numCachedPartitions > 0).toSeq
   }
 
+  override def onTaskEnd(taskEnd: SparkListenerTaskEnd): Unit = synchronized {
+    val metrics = taskEnd.taskMetrics
+    if (metrics != null && metrics.updatedBlockStatuses.nonEmpty) {
+      updateRDDInfo(metrics.updatedBlockStatuses)
+    }
+  }
+
   /** Update the storage info of the RDDs whose blocks are among the given updated blocks */
   private def updateRDDInfo(updatedBlocks: Seq[(BlockId, BlockStatus)]): Unit = {
     val rddIdsToUpdate = updatedBlocks.flatMap { case (bid, _) => bid.asRDDId.map(_.rddId) }.toSet

@@ -41,7 +41,7 @@ class StorageStatusListener(conf: SparkConf) extends SparkListener {
   }
 
   def deadStorageStatusList: Seq[StorageStatus] = synchronized {
-    deadExecutorStorageStatus.toSeq
+    deadExecutorStorageStatus
   }
 
   /** Update storage status list to reflect updated block statuses */
@@ -62,6 +62,16 @@ class StorageStatusListener(conf: SparkConf) extends SparkListener {
     storageStatusList.foreach { storageStatus =>
       storageStatus.rddBlocksById(unpersistedRDDId).foreach { case (blockId, _) =>
         storageStatus.removeBlock(blockId)
+      }
+    }
+  }
+
+  override def onTaskEnd(taskEnd: SparkListenerTaskEnd): Unit = synchronized {
+    val info = taskEnd.taskInfo
+    val metrics = taskEnd.taskMetrics
+    if (info != null && metrics != null) {
+      if (metrics.updatedBlockStatuses.nonEmpty) {
+        updateStorageStatus(info.executorId, metrics.updatedBlockStatuses)
       }
     }
   }
